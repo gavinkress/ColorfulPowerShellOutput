@@ -1,0 +1,120 @@
+function WriteOutputPretty {
+    
+    <#
+    .SYNOPSIS
+        Colorful and formatted output for messages, arrays, lists, text files, hash tables, objects, and more.
+
+    .PARAMETER <ParameterName>
+        Your Message <currentmsg>  Can be strings, arrays, lists, text files, hash tables, objects, and more. Try a hash table for best results.
+        Color <Color> Color of the message (default: Rainbow)
+    #>
+    
+    param (
+        $currentmsg, # Message to display can be any string, array, or object
+        $Color = "Rainbow" # Color of the message (default: Rainbow)
+    )
+    $RainbowColors = @("DarkRed", "Red", "DarkRed", "DarkYellow", "Yellow", "DarkYellow", "DarkGreen", "Green", "DarkGreen", "DarkCyan", "Cyan", "DarkCyan", "DarkBlue", "DarkBlue", "Blue", "DarkMagenta", "Magenta", "DarkMagenta")
+    $width = (Get-Host).UI.RawUI.MaxWindowSize.Width
+    if (($currentmsg.GetType().BaseType -in @("System.Array")) -or ($currentmsg.GetType().Name -in @("ArrayList", "List", "Array", "Object[]"))) {
+        if ($currentmsg[0].GetType().Name -in @('Hashtable', 'PSCustomObject')) {
+            $ukeys = @($currentmsg.Keys | Sort-Object -Unique)
+            $sections = @()
+            
+            foreach ($ikey in $ukeys) {
+                $sections+=@{name=$ikey; sectwidth=($currentmsg| ForEach-Object { $_.$ikey.Length } | Measure-Object -Maximum).Maximum+8}
+            }
+            if ($width -gt ((8*$sections.count)+6)){ 
+                $maxsectionwidth = [math]::floor(($width-6)/$sections.count)
+                if (($sections.sectwidth | Measure-Object -Sum).Sum -lt ($width-6)){$sw_cond = $true}
+                $rows = @()
+                $rows+=(@($sections | ForEach-Object {
+                    if($sw_cond){$sectionwidth = $_.sectwidth}
+                    else{
+                        sectionwidth = (@($_.sectwidth, $maxsectionwidth)| Measure-Object -Minimum).Minimum
+                    }
+                    $maxnamewidth = (@($_.name.Length, ($sectionwidth - 12) )| Measure-Object -Minimum).Minimum
+                    $subname = $_.name.substring(0, $maxnamewidth)
+                    $inside = "- "+$subname.ToUpper()+" -"
+                    $Pad = ($sectionwidth - $inside.Length-8)
+                    $PadLeft = [math]::floor($Pad/2)
+                    $PadRight = $Pad - $PadLeft
+                    $sectiondata = "  ||{0}{1}{2}||  " -f (" "*$PadLeft), $inside, (" "*$PadRight)
+                    $sectiondata
+                }) -join "")
+                $rows+=(@($sections | ForEach-Object {
+                    if($sw_cond){$sectionwidth = $_.sectwidth}
+                    else{
+                        sectionwidth = (@($_.sectwidth, $maxsectionwidth)| Measure-Object -Minimum).Minimum
+                    }
+                    $maxnamewidth = $sectionwidth - 8
+                    $subname = "-"*$maxnamewidth
+                    $inside = "--"+$subname+"--"
+                    $Pad = ($sectionwidth - $inside.Length-4)
+                    $PadLeft = [math]::floor($Pad/2)
+                    $PadRight = $Pad - $PadLeft
+                    $sectiondata = "  {0}{1}{2}  " -f ("-"*$PadLeft), $inside, ("-"*$PadRight)
+                    $sectiondata
+                }) -join "")
+                foreach ($currentmsgitem in $currentmsg){
+                    $rows+=(@($sections | ForEach-Object {
+                        if($sw_cond){$sectionwidth = $_.sectwidth}
+                        else{
+                            sectionwidth = (@($_.sectwidth, $maxsectionwidth)| Measure-Object -Minimum).Minimum
+                        }
+                        
+                        $maxnamewidth = (@($currentmsgitem.($_.name).Length, ($sectionwidth - 12) )| Measure-Object -Minimum).Minimum
+                        $subname = $currentmsgitem.($_.name).substring(0, $maxnamewidth)
+                        $inside = " "+$subname+" "
+                        $Pad = ($sectionwidth - $inside.Length-10)
+                        $PadLeft = [math]::floor($Pad/2)
+                        $PadRight = $Pad - $PadLeft
+                        $sectiondata = "  ||-{0}{1}{2}-||  " -f (" "*$PadLeft), $inside, (" "*$PadRight)
+                        $sectiondata
+                    }) -join "")
+                }
+                $currentmsgarr = $rows
+            } else {
+                
+                $currentmsgarr =  @("")
+
+            }
+            
+        } else {
+            $currentmsgarr = $currentmsg
+        } 
+    } else {
+        $currentmsgarr = $currentmsg -split "`n"
+    }
+     
+    if ($Color -eq "Rainbow") {
+        $Color_index = (Get-Random -Minimum 0 -Maximum $RainbowColors.Count)
+        $Color = $RainbowColors[$Color_index]
+    }
+    
+    
+    $outers = "-" * $width
+    Write-Host ""
+    Write-Host $outers -ForegroundColor $Color
+    
+    if ($null -ne $Color_index) {
+    $Color_index++
+    $Color_index = $Color_index % $RainbowColors.Count
+    $Color = $RainbowColors[$Color_index]
+    }
+    
+    foreach ($currentmsgit in $currentmsgarr){   
+        $n = (@(($width - ($currentmsgit.Length + 6)), 0) | Measure-Object -Maximum).Maximum
+        $nh = [math]::Floor($n / 2)
+        $sides = "-"*$nh
+        if ($n % 2 -eq 0) {$chrext = ""} else {$chrext = "-"}
+        Write-Host "| $sides $currentmsgit $sides$chrext |" -ForegroundColor $Color
+        
+        if ($null -ne $Color_index) {
+            $Color_index++
+            $Color_index = $Color_index % $RainbowColors.Count
+            $Color = $RainbowColors[$Color_index]
+        }
+    }
+    Write-Host $outers -ForegroundColor $Color
+    Write-Host ""
+}
